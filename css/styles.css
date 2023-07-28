@@ -225,7 +225,8 @@ body {
   font-weight: 500;
 }
 .form-add-item .item-content .input-field textarea,
-.form-add-item .item-content .input-field input {
+.form-add-item .item-content .input-field input,
+.form-add-item .item-content .input-field select {
   display: block;
   width: 100%;
   padding: 16px;

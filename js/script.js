@@ -7,6 +7,7 @@ const listBtnUpdate = document.getElementsByClassName("update");
 const listBtnDelete = document.getElementsByClassName("delete");
 const taskDetail = document.getElementById("item-detail");
 const taskDueDate = document.getElementById("due-date");
+const taskStatus = document.querySelector(".input-field:last-child");
 const toast = document.getElementById("toast");
 const toastProcess = document.getElementById("toast__process");
 const toastContent = document.getElementById("toast__content");
@@ -57,6 +58,50 @@ formAddItem.addEventListener("submit", (event) => {
     return;
   }
 
+  if (event.currentTarget.getAttribute("data-task-id")) {
+    const select = document.querySelector(
+      ".input-field:last-child #task-status"
+    );
+    const status = select.options[select.selectedIndex].value;
+
+    document
+      .querySelector(
+        `li[data-task-id="${event.currentTarget.getAttribute("data-task-id")}"]`
+      )
+      .remove();
+
+    const li = getTaskHTML(
+      taskDetail.value,
+      taskDueDate.value,
+      event.currentTarget.getAttribute("data-task-id"),
+      status
+    );
+
+    switch (status) {
+      case "doing":
+        divDoing.appendChild(li);
+        break;
+      case "done":
+        divDone.appendChild(li);
+        break;
+      default:
+        divTodo.appendChild(li);
+    }
+
+    updateTask(
+      event.currentTarget.getAttribute("data-task-id"),
+      taskDetail.value,
+      taskDueDate.value,
+      status
+    );
+
+    setEventClick();
+
+    showToast("Cập nhật task thành công!", "success");
+    closeForm();
+    return;
+  }
+
   const id = getGUID();
   const li = getTaskHTML(taskDetail.value, taskDueDate.value, id, "todo");
 
@@ -78,6 +123,8 @@ formAddItem.addEventListener("submit", (event) => {
 function closeForm() {
   root_form.classList.add("hide");
   overlay.classList.add("hide");
+  taskStatus.classList.add("hide");
+  formAddItem.removeAttribute("data-task-id");
 
   taskDetail.value = "";
   taskDueDate.setAttribute("value", "");
@@ -95,12 +142,26 @@ function openForm() {
   taskDueDate.setAttribute("value", today);
 }
 
+function openEditForm(id) {
+  root_form.classList.remove("hide");
+  overlay.classList.remove("hide");
+  taskStatus.classList.remove("hide");
+  formAddItem.setAttribute("data-task-id", id);
+
+  const task = getTaskFromLocalStorage(id);
+  taskDetail.value = task.detail;
+  taskDueDate.setAttribute("value", task.dueDate);
+  const select = document.querySelector(".input-field:last-child #task-status");
+  select.value = task.status;
+}
+
 function showToast(content, type) {
   clearInterval(intervalId);
   toastProcess.style.width = "100%";
 
   if (type === "error") toastProcess.style.backgroundColor = "red";
-  else toastProcess.style.backgroundColor = "green";
+  else if (type === "success") toastProcess.style.backgroundColor = "green";
+  else toastProcess.style.backgroundColor = "yellow";
 
   let width = 100;
   toastContent.textContent = content;
@@ -150,7 +211,7 @@ function getDateDisplay(dueDate) {
 function setEventClick() {
   for (let i = 0; i < listBtnUpdate.length; i++) {
     listBtnUpdate[i].onclick = function () {
-      console.log(this.getAttribute("data-task-id"));
+      openEditForm(this.getAttribute("data-task-id"));
     };
     listBtnDelete[i].onclick = function () {
       let tasks = getTasks();
@@ -261,3 +322,41 @@ function updateStatus(id, status) {
 
   window.localStorage.setItem(keyName, JSON.stringify(tasks));
 }
+
+function getTaskFromLocalStorage(id) {
+  const tasks = getTasks();
+  return tasks.find((task) => task.id === id);
+}
+
+function updateTask(id, detail, dueDate, status) {
+  let tasks = getTasks();
+  tasks = tasks.map((task) => {
+    if (task.id === id)
+      return {
+        id,
+        detail,
+        dueDate,
+        status,
+      };
+    else return task;
+  });
+
+  window.localStorage.setItem(keyName, JSON.stringify(tasks));
+}
+
+setInterval(() => {
+  const tasks = getTasks();
+  let isNotificate = false;
+  const date = new Date();
+
+  tasks.forEach((task) => {
+    if (task.status !== "done") {
+      const date = new Date(task.dueDate);
+      const current = new Date();
+
+      if (current >= date) isNotificate = true;
+    }
+  });
+
+  if (isNotificate) showToast("Có công việc chưa hoàn thành", "warning");
+}, 60000);
